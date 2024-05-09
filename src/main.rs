@@ -15,7 +15,8 @@ async fn fetch_quote() -> Result<StoicQuote, reqwest::Error> {
     // Initialize HTTP client
     let client = Client::new();
     // Perform a GET request and await the response, converting it directly into the StoicQuote struct.
-    let res = client.get("https://stoic.tekloon.net/stoic-quote")
+    let res = client
+        .get("https://stoic.tekloon.net/stoic-quote")
         .send()
         .await?
         .json::<StoicQuote>()
@@ -36,10 +37,9 @@ async fn quote() -> impl Responder {
 // Main function to run the web server.
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-
     let port = std::env::var("PORT").unwrap_or("8080".to_string());
     println!("Using port: {}", port);
-    
+
     let address: String = format!("0.0.0.0:{}", port);
 
     // Set up and run an HTTP server
