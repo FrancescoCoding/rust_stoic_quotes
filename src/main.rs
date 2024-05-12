@@ -7,7 +7,7 @@ mod models;
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     dotenv::dotenv().ok();
-    
+
     let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string()); // Default to port 8080 if not set
     let address = format!("0.0.0.0:{}", port);
 

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
 
 // Equivalent of a type in TypeScript
 #[derive(Deserialize, Serialize)]
