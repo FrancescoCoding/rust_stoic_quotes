@@ -1,56 +1,32 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use serde::{Deserialize, Serialize};
-// Reqwest client for making HTTP requests.
-use reqwest::Client;
-
-// Equivalent of a type in TypeScript
-#[derive(Deserialize, Serialize)]
-struct StoicQuote {
-    author: String,
-    quote: String,
-}
-
-// Asynchronous function to fetch a stoicism quote from an external API.
-async fn fetch_quote() -> Result<StoicQuote, reqwest::Error> {
-    // Initialize HTTP client
-    let client = Client::new();
-    // Perform a GET request and await the response, converting it directly into the StoicQuote struct.
-    let res = client
-        .get("https://stoic.tekloon.net/stoic-quote")
-        .send()
-        .await?
-        .json::<StoicQuote>()
-        .await?;
-    Ok(res)
-}
-
-// Asynchronous function that acts as a web handler; it fetches a quote and returns an HTTP response.
-async fn quote() -> impl Responder {
-    match fetch_quote().await {
-        // Return HTTP 200 OK with the quote in JSON format if successful.
-        Ok(quote) => HttpResponse::Ok().json(quote),
-        // Return HTTP 500 Internal Server Error if the fetch operation fails.
-        Err(_) => HttpResponse::InternalServerError().finish(),
-    }
-}
+use actix_web::{web, App, HttpServer};
+use sqlx::postgres::PgPoolOptions;
+mod handlers;
+mod models;
 
 // Main function to run the web server.
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let port = std::env::var("PORT").unwrap_or("8080".to_string());
-    println!("Using port: {}", port);
+    dotenv::dotenv().ok();
+    
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string()); // Default to port 8080 if not set
+    let address = format!("0.0.0.0:{}", port);
 
-    let address: String = format!("0.0.0.0:{}", port);
+    // DATABASE_URL must be set in the environment variables
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    // Set up a connection pool to the PostgreSQL database
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .expect("Failed to create pool.");
 
-    // Set up and run an HTTP server
-    HttpServer::new(|| {
+    // Configure and run the HTTP server
+    HttpServer::new(move || {
         App::new()
-            // Define a single route that responds to GET requests on the /quote path.
-            .route("/quote", web::get().to(quote))
+            .app_data(web::Data::new(pool.clone())) // Share the connection pool across threads
+            .configure(handlers::configure_routes) // Include the route configuration
     })
-    // Bind the server to the
-    .bind(address)?
-    // Start the server and await its completion.
+    .bind(address)? // Bind server to the specified address
     .run()
     .await
 }
